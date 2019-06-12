@@ -1,17 +1,18 @@
 script.on_event(defines.events.on_player_created, function(event)
 	local player = game.players[event.player_index]
 	local inventories = {
-		defines.inventory.player_armor,
-		defines.inventory.player_main,
-		defines.inventory.player_guns,
-		defines.inventory.player_ammo,
-		defines.inventory.player_tools,
-		defines.inventory.player_vehicle,
-		defines.inventory.player_player_trash
+		defines.inventory.character_main,
+		defines.inventory.character_guns,
+		defines.inventory.character_ammo,
+		defines.inventory.character_armor,
+		defines.inventory.character_vehicle,
+		defines.inventory.character_trash
 	}
-	
+
 	-- Setup kit presets
 	local kits = {}
+
+	-- Small kit
 	kits["small"] = {}
 	kits["small"]["items"] = {
 		{"iron-plate", 192},
@@ -23,7 +24,8 @@ script.on_event(defines.events.on_player_created, function(event)
 		{"burner-mining-drill", 20},
 		{"coal", 100}
 	}
-	
+
+	-- Starter kit
 	kits["starter"] = {}
 	kits["starter"]["items"] = {
 		{"iron-plate", 292},
@@ -47,7 +49,8 @@ script.on_event(defines.events.on_player_created, function(event)
 		{"logistics"},
 		{"electric-energy-distribution-1"}
 	}
-		
+
+	-- Medium kit, with power armor and basic construction bots.
 	kits["medium"] = {}
 	kits["medium"]["items"] = {
 		{"iron-plate", 592},
@@ -73,9 +76,9 @@ script.on_event(defines.events.on_player_created, function(event)
 		{"coal", 200},
 		{"construction-robot", 50},
 		{"lab", 10},
-		{"deconstruction-planner", 1},
-		{"power-armor", 1}
+		{"deconstruction-planner", 1}
 	}
+	kits["medium"]["armorName"] = "power-armor"
 	kits["medium"]["armorItems"] = {
 		{"fusion-reactor-equipment"},
 		{"personal-roboport-equipment"},
@@ -87,7 +90,7 @@ script.on_event(defines.events.on_player_created, function(event)
 		{"battery-equipment"},
 		{"battery-equipment"}
 	}
-	
+
 	kits["medium"]["technologies"] = {
 		{"automation"},
 		{"electronics"},
@@ -96,10 +99,11 @@ script.on_event(defines.events.on_player_created, function(event)
 		{"electric-energy-distribution-1"},
 		{"steel-axe"}
 	}
-	
+
+
+	-- Big kit, with power-armor-mk2 and a lot of extra stuff.
 	kits["big"] = {}
 	kits["big"]["items"] = {
-		{"power-armor-mk2", 1},
 		{"iron-plate", 592},
 		{"copper-plate", 400},
 		{"iron-gear-wheel", 200},
@@ -133,9 +137,10 @@ script.on_event(defines.events.on_player_created, function(event)
 		{"lab", 10},
 		{"deconstruction-planner", 1},
 		{"storage-tank", 10},
-		{"logistic-chest-storage", 50},
+		{"logistic-chest-storage", 50}
 	}
-	
+
+	kits["big"]["armorName"] = "power-armor-mk2"
 	kits["big"]["armorItems"] = {
 		{"fusion-reactor-equipment"},
 		{"fusion-reactor-equipment"},
@@ -151,7 +156,7 @@ script.on_event(defines.events.on_player_created, function(event)
 		{"battery-mk2-equipment"},
 		{"battery-mk2-equipment"}
 	}
-	
+
 	kits["big"]["technologies"] = {
 		{"automation"},
 		{"steel-processing"},
@@ -182,6 +187,11 @@ script.on_event(defines.events.on_player_created, function(event)
 		kit = kits["medium"]
 	end
 
+	-- Inject armor name if it is defined for this kit.
+	if kit["armorName"] ~= nil then
+		table.insert(kit["items"], {kit["armorName"], 1})
+	end
+
 	-- Inject belt immunity equipment and technology if requested
 	if beltImmunitySetting then
 		table.insert(kit["armorItems"], {"belt-immunity-equipment"})
@@ -192,56 +202,45 @@ script.on_event(defines.events.on_player_created, function(event)
 
 	-- Add items
 	for k,v in pairs(kit["items"]) do
-		player.insert{name = v[1], count = v[2]}
-	end
-	
-	if kit["armorItems"] ~= nil then
-		-- Find armor in one of the inventories
-		-- Usually ends up in the armor slot. But that one does not exist in sandbox mode
-		for k,v in pairs(inventories) do
-			local inventory = player.get_inventory(v)
-			if inventory ~= nil then
-				local armor = inventory.find_item_stack("power-armor")
-				if armor ~= nil then
-					-- Add items to armor grid
-					local grid = armor.grid
-					for k,v in pairs(kit["armorItems"]) do
-						grid.put{name = v[1]}
-					end
-					break
-				end
-			end
+		if v[1] ~= nil then
+			player.insert{name = v[1], count = v[2]}
 		end
 	end
 
-	-- YEA YEA I'M LAZY, THIS IS FOR MK2
-	if kit["armorItems"] ~= nil then
+	if kit["armorName"] ~= nil then
 		-- Find armor in one of the inventories
 		-- Usually ends up in the armor slot. But that one does not exist in sandbox mode
+		local armorName = kit["armorName"]
+		found = false
 		for k,v in pairs(inventories) do
 			local inventory = player.get_inventory(v)
 			if inventory ~= nil then
-				local armor = inventory.find_item_stack("power-armor-mk2")
+				local armor = inventory.find_item_stack(armorName)
 				if armor ~= nil then
 					-- Add items to armor grid
 					local grid = armor.grid
 					for k,v in pairs(kit["armorItems"]) do
 						grid.put{name = v[1]}
 					end
+					found = true;
 					break
 				end
 			end
 		end
+
+		if found == false then
+			player.print("Warning: unable to find armor " .. armorName .. " in inventory")
+		end
 	end
-	
-	
+
 	-- Unlock 
 	if techSetting then
 		if kit["technologies"] ~= nil then
 			for k,v in pairs(kit["technologies"]) do
-				player.force.technologies[v[1]].researched = true
+				if player.force.technologies[v[1]] ~= nil then
+					player.force.technologies[v[1]].researched = true
+				end
 			end
 		end
 	end
-	
 end)
